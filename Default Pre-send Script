@@ -1,0 +1,22 @@
+// this is groovy, a derivitive of Java
+
+// Load up the first 1000 lines of the log file into a variable
+def log = build.getLog(1000)
+
+// Let's setup a boolean of the result of searching for the string that appears
+// in the log file when an AutoPkg job successfully completes but no work occurred.
+
+def NothingDone = log =~ /Nothing downloaded, packaged or imported/
+def Error = log =~ /Error/
+def error = log =~ /error/
+
+// And now let's test against that boolean and kill the e-mail (cancel = true) if it found the
+// "Nothing downloaded, packaged or imported" string  AND it hasn't found a string with Error or error
+
+if (NothingDone && !Error && !error) {
+        // Build is successful, but nothing imported... so no e-mail
+        cancel=true
+} else {
+        // Send the email
+        cancel=false
+}
