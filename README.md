@@ -17,7 +17,7 @@ ${SCRIPT, template="autopkg-munki-new-items.groovy"}
 
 # IS_TROUBLEMAKER
 
-AutoPkg uses HTTP headers to tell if a file on a software developer's website has changed.  If the website developer uses mirrors, or a content delivery network to deliver their software the HTTP headers may change from mirror to mirror (or not be sent at all) causing AutoPkg to download the software again (triggering an e-mail to be sent).
+AutoPkg uses HTTP headers to tell if a file on a software developer's website has changed.  If the website developer uses mirrors, or a content delivery network to deliver their software the HTTP headers may change from mirror to mirror (or not be sent at all) causing AutoPkg to download the software again (triggering an e-mail to be sent).  See AutoPkg FAQ item #1, https://github.com/autopkg/autopkg/wiki/FAQ
 
 Using the Inject Environment Variables plug-in you can tell the pre-send script of the Extended E-mail Notification (email-ext) plugin to ignore these downloads for known-troublemakers (so far in our experience, VLC, malwarebytes, MacTex, XLD)
 
