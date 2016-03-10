@@ -1,29 +1,35 @@
-// this is groovy, a derivitive of Java
-// Requires the following Jenkins plug-ins:
-//          Email-ext
-//          EnvInject
+// Load up the first 100,000 lines of the log file into a variable
+// this is expanded over the 1,000 lines used in the AutoPkg script 
+// because each 
+def log = build.getLog(100000)
 
-// Load up the first 1000 lines of the log file into a variable
-def log = build.getLog(1000)
+
+def finder = ('Downloading.*' =~ /gr.*/)
+assert finder instanceof java.util.regex.Matcher
 
 // Let's setup a boolean of the result of searching for the string that appears
 // in the log file when a job successfully completes but no work occurred.
 
-def NothingDone = log =~ /Nothing downloaded, packaged or imported/
+def NothingDone = (log ==~/.*Nothing downloaded, packaged or imported.*/)
+assert NothingDone instanceof Boolean
 logger.println("** NothingDone is " + NothingDone)
 
-def Error = log =~ /Error/
+def Error = (log ==~/.*Error.*/)
+assert Error instanceof Boolean
 logger.println("** Error is " + Error)
 
-def error = log =~ /error/
+def error = (log ==~/.*error.*/)
+assert error instanceof Boolean
 logger.println("** error is " + error)
 
 // New items were imported into the munki repo
-def NewItemsImported = log =~ /new items were imported/
+def NewItemsImported = (log ==~/.*new items were imported into Munki.*/)
+assert NewItemsImported instanceof Boolean
 logger.println("** NewItemsImported is " + NewItemsImported)
 
 // New items were downloaded to the AutoPkg Cache directory
-def NewItemsDownloaded = log =~ /new items were downloaded/
+def NewItemsDownloaded = (log ==~/.*new items were downloaded.*/)
+assert NewItemsDownloaded instanceof Boolean
 logger.println("** NewItemsDownloaded is " + NewItemsDownloaded)
 
 /* The below code is for AutoPkg FAQ #1:
@@ -40,9 +46,28 @@ logger.println("** NewItemsDownloaded is " + NewItemsDownloaded)
  * because we have a lot of existing jobs and only set the IS_TROUBLEMAKER on jobs that
  * ARE troublemakers!
  */
- 
-def is_troublemaker = System.getenv("IS_TROUBLEMAKER") ?: false
-logger.println("** is_troublemaker is " + is_troublemaker)
+
+
+try { 
+
+   // if IS_TROUBLMAKER is set by EnvInject plugin, set known_troublemaker to that value
+   // (as it could've been a troublemaker in the past, and set to false when it was
+   // fixed
+
+   known_troublemaker = $IS_TROUBLEMAKER 
+
+} catch (MissingPropertyExceptionmpe) { 
+
+   // if we get an error, then it's because $IS_TROUBLEMAKER doesn't exist, so we
+   // should set it to false
+   
+   known_troublemaker = false
+   logger.println("** IS_TROUBLEMAKER try failed, caught MissingPropertyExceptionmpe and set known_troublemaker to " + known_troublemaker)
+
+} 
+
+
+logger.println("** known_troublemaker is " + known_troublemaker)
 
 /* And now let's test against that boolean and kill the e-mail (cancelEmail = true) if it found the
  * -Nothing downloaded, packaged or imported- string  AND it hasn't found a string with Error or error
@@ -55,18 +80,18 @@ if (NothingDone && !Error && !error) {
 	logger.println("=== e-mail cancelled: Job completed without errors but nothing was done (nothing downloaded or imported)")
 	cancel=true
 	
-} else if (NewItemsDownloaded && !is_troublemaker) {
-
-	// logger.println("** AutoPkg downloaded, but not imported to Munki as " + $JOB_NAME + " is a known troublemaker.")
-	logger.println("=== e-mail cancelled: KNOWN TROUBLEMAKER: AutoPkg downloaded sucessufully (but no import as this version was already in the munki repo")
-	logger.println("=== See AutoPkg FAQ, item #1 at https://github.com/autopkg/autopkg/wiki/FAQ")
-	cancel=true
-
 } else if (NewItemsImported) {
 	
 	// New items were imported into the Munki Repo, send the email.
 	logger.println("=*=*=*=*=*=*=*=*=*=*=*=* New Item in Munki Repo, E-mail Sent !!!! =*=*=*=*=*=*=*=*=*=*=*=*")
 	cancel=false
+
+} else if (NewItemsDownloaded && known_troublemaker) {
+
+	// logger.println("** AutoPkg downloaded, but not imported to Munki as " + $JOB_NAME + " is a known troublemaker.")
+	logger.println("=== e-mail cancelled: KNOWN TROUBLEMAKER: AutoPkg downloaded sucessufully (but no import as this version was already in the munki repo")
+	logger.println("=== See AutoPkg FAQ, item #1 at https://github.com/autopkg/autopkg/wiki/FAQ")
+	cancel=true
 
 } else { 
     // Send the email, something's run amok
